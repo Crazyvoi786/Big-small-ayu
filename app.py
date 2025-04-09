@@ -12,9 +12,12 @@ if "history" not in st.session_state:
 if "loss_streak" not in st.session_state:
     st.session_state.loss_streak = 0
 
-# --- INPUT ---
-outcome = st.text_input("Enter last outcome (B/S):", max_chars=1).upper()
-submit = st.button("Submit")
+# --- INPUT SECTION ---
+col1, col2 = st.columns([3, 1])
+with col1:
+    outcome_input = st.text_input("Enter last outcome (B/S):", max_chars=1).upper()
+with col2:
+    add_button = st.button("➕ Add")
 
 # --- TREND RULES ---
 def predict_next(history):
@@ -23,7 +26,7 @@ def predict_next(history):
 
     recent = "".join(history[-6:])
 
-    # Common trend patterns
+    # Common Patterns
     if recent.endswith("BB"):
         return "S", "Pattern: BB → S"
     if recent.endswith("SS"):
@@ -36,13 +39,12 @@ def predict_next(history):
         return "B", "Pattern: SSS → B"
     if recent.endswith("BBBB") or recent.endswith("SSSS"):
         return history[-1], "Long trend → Follow same"
-    
-    # Default fallback
+
     return "SKIP", "No clear pattern"
 
-# --- SUBMIT LOGIC ---
-if submit and outcome in ["B", "S"]:
-    st.session_state.history.append(outcome)
+# --- ADD LOGIC ---
+if add_button and outcome_input in ["B", "S"]:
+    st.session_state.history.append(outcome_input)
 
     prediction, reason = predict_next(st.session_state.history)
 
@@ -54,12 +56,10 @@ if submit and outcome in ["B", "S"]:
         elif prev_pred in ["B", "S"]:
             st.session_state.loss_streak += 1
 
-    # Show prediction
     st.markdown(f"### 📌 Next Prediction: `{prediction}`")
     st.markdown(f"🧠 **Reason:** {reason}")
     st.markdown(f"🔥 **Loss Streak:** {st.session_state.loss_streak}")
 
-    # Recovery advice
     if st.session_state.loss_streak >= 2:
         st.warning("⚠️ Multiple losses detected. Use caution or wait for trend clarity.")
 
