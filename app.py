@@ -1,75 +1,77 @@
 import streamlit as st
+from collections import deque
+import random
 
 st.set_page_config(page_title="Shadow Point Predictor", layout="centered")
+st.title("🔮 Shadow Point AI - Big/Small Prediction")
+st.caption("Powered by Dodo | Focus: Big/Small Only | Advanced Trend Logic")
 
-st.title("🔮 Shadow Point: Big/Small Predictor")
-st.markdown("Focus: **Manual Outcome Input** → AI Pattern → Next Prediction")
-
-# --- SESSION STORAGE ---
+# Initialize session state
 if "history" not in st.session_state:
     st.session_state.history = []
-
 if "loss_streak" not in st.session_state:
     st.session_state.loss_streak = 0
 
-# --- INPUT SECTION ---
-col1, col2 = st.columns([3, 1])
-with col1:
-    outcome_input = st.text_input("Enter last outcome (B/S):", max_chars=1).upper()
-with col2:
-    add_button = st.button("➕ Add")
+# Advanced pattern memory
+pattern_memory = {
+    ("B", "B"): "S",
+    ("S", "S"): "B",
+    ("B", "S"): "B",
+    ("S", "B"): "S",
+    ("B", "B", "B"): "S",
+    ("S", "S", "S"): "B",
+    ("B", "B", "S"): "B",
+    ("S", "S", "B"): "S",
+    ("B", "S", "B"): "S",
+    ("S", "B", "S"): "B",
+    ("B", "B", "B", "B"): "S",
+    ("S", "S", "S", "S"): "B",
+    ("B", "B", "B", "B", "B"): "S",
+    ("S", "S", "S", "S", "S"): "B",
+}
 
-# --- TREND RULES ---
+# Function to predict next outcome
 def predict_next(history):
-    if len(history) < 3:
-        return "SKIP", "Not enough data"
+    for length in reversed(range(2, 6)):
+        if len(history) >= length:
+            recent = tuple(history[-length:])
+            if recent in pattern_memory:
+                return pattern_memory[recent], f"Pattern: {' → '.join(recent)} → {pattern_memory[recent]}"
+    return "SKIP", "No strong pattern detected"
 
-    recent = "".join(history[-6:])
-
-    # Common Patterns
-    if recent.endswith("BB"):
-        return "S", "Pattern: BB → S"
-    if recent.endswith("SS"):
-        return "B", "Pattern: SS → B"
-    if recent.endswith("BSBS") or recent.endswith("SBSB"):
-        return "SKIP", "Zigzag detected"
-    if recent.endswith("BBB"):
-        return "S", "Pattern: BBB → S"
-    if recent.endswith("SSS"):
-        return "B", "Pattern: SSS → B"
-    if recent.endswith("BBBB") or recent.endswith("SSSS"):
-        return history[-1], "Long trend → Follow same"
-
-    return "SKIP", "No clear pattern"
-
-# --- ADD LOGIC ---
-if add_button and outcome_input in ["B", "S"]:
-    st.session_state.history.append(outcome_input)
-
-    prediction, reason = predict_next(st.session_state.history)
-
-    last = st.session_state.history[-1]
-    if len(st.session_state.history) >= 2:
-        prev_pred, _ = predict_next(st.session_state.history[:-1])
-        if prev_pred == last:
+# Add outcome buttons
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🟢 BIG"):
+        st.session_state.history.append("B")
+        prediction, reason = predict_next(st.session_state.history)
+        if prediction == "B":
             st.session_state.loss_streak = 0
-        elif prev_pred in ["B", "S"]:
+        elif prediction == "S":
+            st.session_state.loss_streak += 1
+with col2:
+    if st.button("🔴 SMALL"):
+        st.session_state.history.append("S")
+        prediction, reason = predict_next(st.session_state.history)
+        if prediction == "S":
+            st.session_state.loss_streak = 0
+        elif prediction == "B":
             st.session_state.loss_streak += 1
 
+# Show prediction
+if st.session_state.history:
+    prediction, reason = predict_next(st.session_state.history)
     st.markdown(f"### 📌 Next Prediction: `{prediction}`")
     st.markdown(f"🧠 **Reason:** {reason}")
-    st.markdown(f"🔥 **Loss Streak:** {st.session_state.loss_streak}")
+    st.markdown(f"🔥 **Loss Streak:** `{st.session_state.loss_streak}`")
 
-    if st.session_state.loss_streak >= 2:
-        st.warning("⚠️ Multiple losses detected. Use caution or wait for trend clarity.")
-
-# --- DISPLAY HISTORY ---
+# Show history
 if st.session_state.history:
-    st.markdown("#### 📜 Outcome History")
-    st.code(" → ".join(st.session_state.history), language="text")
+    st.markdown("---")
+    st.markdown("### 📜 Outcome History:")
+    st.write(" → ".join(st.session_state.history))
 
-# --- RESET BUTTON ---
-if st.button("Reset History"):
+# Reset button
+if st.button("🔄 Reset History"):
     st.session_state.history = []
     st.session_state.loss_streak = 0
-    st.success("History Cleared")
